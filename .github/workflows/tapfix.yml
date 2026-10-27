@@ -1,0 +1,32 @@
+name: build-tapfix
+on:
+  push:
+    paths:
+      - tapfix.zip
+      - .github/workflows/tapfix.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Unzip
+        run: unzip -q tapfix.zip -d proj
+      - name: Build
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete tapfix-latest -y --cleanup-tag || true
+          gh release create tapfix-latest proj/app/build/outputs/apk/debug/app-debug.apk --title tapfix-latest --notes tapfix
